@@ -1,0 +1,158 @@
+= docker practice
+
+This practice use official exemple from : https://docs.docker.com/get-started/
+
+You can run it locally with :
+
+[source,bash]
+----
+docker run -d -p 80:80 docker/getting-started
+----
+
+And go to http://localhost
+
+== Step 1
+
+The app and the dockerfile was already given, you can directly build and run it with :
+
+[source,bash]
+----
+docker build -t getting-started .
+docker run -dp 3000:3000 getting-started
+----
+
+And enjoy your todo list to : http://localhost:3000
+
+== Step 2
+
+Update the app
+
+[source,bash]
+----
+sed -i 's/No items yet/You have no todo items yet/' src/static/js/app.js
+----
+
+Rebuild the app and try to see our change.
+
+== Step 3
+
+Use volume to persist our datas
+
+[source,bash]
+----
+docker volume create todo-db
+docker run --rm -dp 3000:3000 -v todo-db:/etc/todos getting-started
+----
+
+Note the `--rm` arg to delete the container on exit
+
+[source,bash]
+----
+docker volume inspect todo-db
+docker volume rm todo-db
+----
+
+== Step 4
+
+[source,bash]
+----
+docker run --name getting-started -dp 3000:3000 getting-started
+docker cp getting-started:/app/node_modules node_modules
+docker rm -f getting-started
+----
+
+[source,bash]
+----
+docker run --rm -v "${PWD}:/app" -w /app node:14 npm install
+docker run --rm -p 3000:3000 -v "${PWD}:/app" -w /app node:14 npm run dev
+----
+
+[source,bash]
+----
+sed -i 's/Add Item/Add/' src/static/js/app.js
+----
+
+== Step 5
+
+[source,bash]
+----
+docker network create todo-app
+----
+
+[source,bash]
+----
+docker run -d \
+     --network todo-app --network-alias mysql \
+     --name maria \
+     -v todo-mysql-data:/var/lib/mysql \
+     -e MYSQL_ROOT_PASSWORD=secret \
+     -e MYSQL_DATABASE=todos \
+     mariadb:10
+----
+
+[source,bash]
+----
+docker exec -it maria mysql -p
+
+SHOW DATABASES;
+quit;
+----
+
+[source,bash]
+----
+docker run --rm \
+	--name getting-started \
+    -dp 3000:3000 \
+	--network todo-app \
+	-e MYSQL_HOST=mysql \
+	-e MYSQL_USER=root \
+	-e MYSQL_PASSWORD=secret \
+	-e MYSQL_DB=todos \
+    getting-started
+----
+
+[source,bash]
+----
+docker exec -it maria mysql -p todos
+select * from todo_items;
+quit;
+----
+
+[source,bash]
+----
+docker rm -f getting-started maria
+----
+
+== Step 6 - docker-compose
+
+See the docker-compose.yml file
+
+[source,bash]
+----
+docker-compose up
+----
+
+[source,bash]
+----
+docker-compose up -d maria
+docker-compose logs -f maria
+----
+
+[source,bash]
+----
+docker-compose up -d app
+docker-compose ps
+----
+
+[source,bash]
+----
+docker-compose down
+docker volume rm todo-mysql-data
+----
+
+
+[source,bash]
+----
+docker-compose build
+----
+
